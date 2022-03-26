@@ -32,9 +32,10 @@ contract SecretaryGame {
     uint256 public immutable sabotagePremium = 3; // costs 3x as much to sabotage a player than claim a number
     uint256 public immutable sabotageEffectiveness = 10; // fraction of maxNum affected by sabotage
 
-    uint256 public immutable _gameStart;
 
     /// ============ Mutable storage ============
+
+    uint256 _gameStart;
 
     // Tracks your current number
     mapping(address => uint) public scores;
@@ -51,8 +52,8 @@ contract SecretaryGame {
     event Payout(address indexed winner, uint256 amount);
 
     constructor() {
-        this._gameStart = this.timestamp;
-        this._totalPlayers = 0;
+        _gameStart = block.timestamp;
+        _totalPlayers = 0;
     }
 
     /// ============ Functions ============
@@ -62,7 +63,7 @@ contract SecretaryGame {
         address winner;
         uint256 currentMax = 0;
 
-        for(uint i = 0; i < this._totalPlayers ; i++) {
+        for(uint i = 0; i < _totalPlayers ; i++) {
             if(scores[players[i]] > currentMax) {
                 winner = players[i];
             }
@@ -70,34 +71,34 @@ contract SecretaryGame {
     }
 
     function isLiveGame() private view returns (bool) {
-        return this.timestamp < this.gameStart + this.gameLength * 86400;
+        return block.timestamp < _gameStart + gameLength * 86400;
     }
 
     function getFee() private view returns (uint) {
         uint256 currentPool = address(this).balance;
 
-        return this.baseFee + currentPool/this.poolFee;
+        return baseFee + currentPool/poolFee;
     }
 
     function drawNumber() external payable {
         require(
-            this.isLiveGame(),
+            isLiveGame(),
             "Cannot draw number while game not live."
         );
 
         require(
-            msg.value >= this.getFee(),
+            msg.value >= getFee(),
             "Must pay minimum fee to draw a number."
         );
 
     
         // TODO chainlink random number
-        uint256 score = block.number % this.maxNum + 1;
+        uint256 score = block.number % maxNum + 1;
         scores[msg.sender] = score;
 
         if (scores[msg.sender] <= 0) {
-            this.players[this._totalPlayers] = msg.sender;
-            this._totalPlayers += 1;
+            players[_totalPlayers] = msg.sender;
+            _totalPlayers += 1;
         }
 
         emit Draw(msg.sender, msg.value, score);
@@ -106,12 +107,12 @@ contract SecretaryGame {
 
     function sabotage(address victim) external payable {
         require(
-            this.isLiveGame(),
+            isLiveGame(),
             "Cannot sabotage while game is not live."
         );
 
         require(
-            msg.value >= this.getFee() * sabotagePremium,
+            msg.value >= getFee() * sabotagePremium,
             "Must pay min fee * sabotage premium to sabotage a player"
         );
 
@@ -127,10 +128,10 @@ contract SecretaryGame {
         uint256 oldScore = scores[victim];
         uint256 newScore = oldScore;
 
-        if (isIncrease) {
-            newScore += this.maxNum / this.sabotageEffectiveness;            
+        if (isIncrease == 1) {
+            newScore += maxNum / sabotageEffectiveness;            
         } else {
-            newScore -= this.maxNum / this.sabotageEffectiveness;
+            newScore -= maxNum / sabotageEffectiveness;
         }
         scores[victim] = newScore;
 
